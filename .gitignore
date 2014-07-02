@@ -25,5 +25,3 @@
 *.rar
 *.tar
 *.aod*
-# except some libaray module files
-!*.pro
