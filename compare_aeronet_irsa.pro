@@ -5,14 +5,19 @@
 ; 
 
   ; controls
-  plot_obs_sequence = 1
+  plot_obs_sequence = 0
 
   ; specify the date 
   nymd0 = 20130317L
   nhms0 = 032523L
   dfrc0 = day_fraction( nhms0 )
-  ddfrc1 = 0.005
+  ddfrc1 = 0.0075
   ddfrc2 = 0.015
+
+  ; get standard geometries
+  std_azm = get_alm_std_azm()
+  std_vza = get_ppp_std_vza()
+  std_sca = get_ppl_std_sca()
 
   ; specify the files to read
   dir1 = './data/'
@@ -90,8 +95,37 @@
     oplot, ppp_ymd0.dfrc, fltarr(n_elements(ppp_ymd0))+1, color=3, psym=sym(11)
     oplot, aeronet_ppp_ymd0.dfrc, fltarr(n_elements(aeronet_ppp_ymd0))+1.2, color=1, psym=sym(11)
 
+    oplot, aeronet_aod_hms0.dfrc, aeronet_aod_hms0.tau441, psym=sym(6), color=4
+    oplot, aod_hms0.dfrc, aod_hms0.tau441, psym=sym(6), color=2
+    oplot, aeronet_alm_hms0.dfrc, fltarr(n_elements(aeronet_alm_hms0))+2.2, color=4, psym=sym(11)
+    oplot, alm_hms0.dfrc, fltarr(n_elements(alm_hms0))+2, color=2, psym=sym(11)
+    oplot, ppp_hms0.dfrc, fltarr(n_elements(ppp_hms0))+1, color=2, psym=sym(11)
+    oplot, aeronet_ppp_hms0.dfrc, fltarr(n_elements(aeronet_ppp_hms0))+1.2, color=4, psym=sym(11)
+
   endif
 
+  ; now plot alm radiance and compare
+  plot, std_azm, alm_hms0[0].radiance_right, /nodata, color=1,  $ 
+        xrange = [-180, 180], xstyle=1, xtickinterval=60, $
+        yrange = [0.1, 10], ystyle=1, /ylog
+  oplot, -std_azm, alm_hms0[0].radiance_left, color=1
+  oplot, std_azm, alm_hms0[0].radiance_right, color=1
+
+  factor = aeronet_alm_hms0[0].radiance_right[0]/alm_hms0[0].radiance_right[0]
+
+  oplot,  -std_azm, aeronet_alm_hms0[0].radiance_left / factor, color=2, psym=sym(6)
+  oplot,  std_azm, aeronet_alm_hms0[0].radiance_right / factor, color=2, psym=sym(6)
+
+  factor_left = aeronet_alm_hms0.radiance_right/alm_hms0.radiance_right
+  factor_right = aeronet_alm_hms0.radiance_right/alm_hms0.radiance_right
+
+  plot, std_azm, factor_right[*,0], color=1, /nodata, $
+        xrange=[-180,180], xstyle=1, xtickinterval=60,  $
+        yrange=[0,60], ystyle=1
+  for i = 0, 4 do begin
+    oplot, std_azm, factor_right[*,i], color=i+1
+    oplot, -std_azm, factor_left[*,i], color=i+1
+  endfor
 
   ; end of program
   end
