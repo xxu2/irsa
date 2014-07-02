@@ -1,0 +1,29 @@
+# Ignore temporary files
+*~
+*.sav
+*.nc
+*.dat
+*.ps
+*.alm*
+*.ppl
+*.PPP*
+*.gif
+*.aot
+*.aot2
+*.asy
+*.pfn
+*.vol
+*.rin
+*.siz
+*.ssa
+*.tab
+*.solar_info
+*.tot20
+*.rad*
+*.dop*
+*.out
+*.rar
+*.tar
+*.aod*
+# except some libaray module files
+!*.pro
