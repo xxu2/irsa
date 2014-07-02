@@ -6,6 +6,7 @@
 
   ; controls
   plot_obs_sequence = 0
+  siteinfo = { name:'Beijing_IRSA', lat:40.0048, lon:116.3786, alt:59 } 
 
   ; specify the date 
   nymd0 = 20130317L
@@ -29,6 +30,7 @@
   f_aod2 = dir2 + 'AERONET_2013_AOD.sav'
   f_alm2 = dir2 + 'AERONET_2013_ALM.sav'
   f_ppp2 = dir2 + 'AERONET_2013_PPP.sav'
+  f_ppl2 = dir2 + 'AERONET_2013_PPL.sav'
 
   ; read data
   restore, f_aod1  ; aod
@@ -37,10 +39,12 @@
   restore, f_aod2  ; aeronet_aod
   restore, f_alm2  ; aeronet_alm
   restore, f_ppp2  ; aeronet_ppp
+  restore, f_ppl2  ; aeronet_ppl
 
   ; structure names
   str_names = [ 'aod', 'alm', 'ppp', $
-                'aeronet_aod', 'aeronet_alm', 'aeronet_ppp' ]
+                'aeronet_aod', 'aeronet_alm', 'aeronet_ppp', $
+                'aeronet_ppl' ]
 
   ; find data for day nymd0
   ;index = where( aod.nymd eq nymd0, ct )
@@ -102,8 +106,7 @@
     oplot, ppp_hms0.dfrc, fltarr(n_elements(ppp_hms0))+1, color=2, psym=sym(11)
     oplot, aeronet_ppp_hms0.dfrc, fltarr(n_elements(aeronet_ppp_hms0))+1.2, color=4, psym=sym(11)
 
-  endif
-
+  window, 2
   ; now plot alm radiance and compare
   plot, std_azm, alm_hms0[0].radiance_right, /nodata, color=1,  $ 
         xrange = [-180, 180], xstyle=1, xtickinterval=60, $
@@ -119,6 +122,7 @@
   factor_left = aeronet_alm_hms0.radiance_right/alm_hms0.radiance_right
   factor_right = aeronet_alm_hms0.radiance_right/alm_hms0.radiance_right
 
+  window, 3
   plot, std_azm, factor_right[*,0], color=1, /nodata, $
         xrange=[-180,180], xstyle=1, xtickinterval=60,  $
         yrange=[0,60], ystyle=1
@@ -126,6 +130,59 @@
     oplot, std_azm, factor_right[*,i], color=i+1
     oplot, -std_azm, factor_left[*,i], color=i+1
   endfor
+
+  endif
+
+  ; now get a factor of solar radiances 
+  s0_fractor = fltarr( n_elements(alm_hms0),2 )
+  for i = 0, n_elements(alm_hms0)-1 do begin
+    irsa_rad0 = [alm_hms0[i].radiance_left, alm_hms0[i].radiance_right]
+    aero_rad0 = [aeronet_alm_hms0[i].radiance_left, aeronet_alm_hms0[i].radiance_right]
+    idx_rad0  = where( irsa_rad0 gt 0 and aero_rad0 gt 0 )
+    s0_fractor[i,0] = mean( aero_rad0[idx_rad0] / irsa_rad0[idx_rad0] )
+    s0_fractor[i,1] = stddev( aero_rad0[idx_rad0] / irsa_rad0[idx_rad0] )
+  endfor
+
+  ; now create the structure to be saced by procedure write_obs4inv.pro
+  ; aod values
+  aod2save = aod_hms0
+
+  ; almucantar radiance
+  alm2save = { nymd:aeronet_alm_hms0.nymd, $
+               nhms:aeronet_alm_hms0.nhms, $
+               doy:aeronet_alm_hms0.doy,   $
+               dfrc:aeronet_alm_hms0.dfrc, $
+               sza:aeronet_alm_hms0.sza,   $                ; SZA from AERONET        
+               lamda:aeronet_alm_hms0.lamda, $ 
+               radiance_left:alm_hms0.radiance_left, $      ; radiance values from IRSA
+               radiance_right:alm_hms0.radiance_right }
+
+  ; pp radiance
+  pp_radiance = aeronet_ppl_hms0.radiance
+ 
+  ; now scale the pp radiance with s0_factor, and assume the wavelengths are in the same order
+  for i = 0, n_elements(alm_hms0)-1 do pp_radiance[*,i] = pp_radiance[*,i] / s0_fractor[i,0]
+  ppl2save = { nymd:aeronet_ppl_hms0.nymd, $
+               nhms:aeronet_ppl_hms0.nhms, $
+               doy:aeronet_ppl_hms0.doy,   $ 
+               dfrc:aeronet_ppl_hms0.dfrc, $
+               sza:aeronet_ppl_hms0.sza,   $ 
+               lamda:aeronet_ppl_hms0.lamda, $
+               radiance:pp_radiance }
+
+  ; ppp polarization
+  ppp2save = { nymd:aeronet_ppp_hms0.nymd, $
+               nhms:aeronet_ppp_hms0.nhms, $
+               doy:aeronet_ppp_hms0.doy,   $
+               dfrc:aeronet_ppp_hms0.dfrc, $
+               sza:aeronet_ppp_hms0.sza,   $
+               lamda:aeronet_ppp_hms0.lamda, $
+               dop:ppp_hms0.dop }
+ 
+
+  outdir = './invobs/' 
+  write_obs4inv, nymd0, nhms0, siteinfo, outdir, $
+                 aod=aod2save, alm=alm2save, ppp=ppp2save, ppl=ppl2save
 
   ; end of program
   end
